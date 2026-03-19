@@ -1,9 +1,10 @@
 import os, socket, time
 from datetime import datetime
 
+from azure.core.exceptions import ClientAuthenticationError
 from dotenv import load_dotenv as env
 from pydo import Client
-from azure.core.exceptions import ClientAuthenticationError
+
 
 env()
 
@@ -98,14 +99,17 @@ def power_off_droplet(droplet_id):
         print(f"Droplet desligado com sucesso!")
         return
 
-
+contagem = 0
 for droplet in droplets_list:
+    contagem += 1
     droplet_name = droplet.get("name")
     droplet_id = droplet.get("id")
     droplet_network = droplet["networks"]["v4"]
+    print("=" * 45)
+    print(f"Progresso: {contagem}/{len(droplets_list)}")
     print(f"Preparando o droplet {droplet_name}")
     if droplet_name in skip_list:
-        print("Skip")
+        print("Não será feito o snapshot.")
     else:
         for network in droplet["networks"]["v4"]:
             if network["type"] == "public":
@@ -124,3 +128,4 @@ for droplet in droplets_list:
                 power_on_droplet(droplet_id=droplet_id, droplet_ip=droplet_ip)
         else:
             print(f"O droplet {droplet_name} não irá fazer snapshot.")
+    print("=" * 45)
