@@ -18,6 +18,7 @@ try:
     droplets_info = client.droplets.list()
 except ClientAuthenticationError as e:
     print(str(e))
+    raise SystemExit(1)
 
 droplets_list = droplets_info.get("droplets")
 skip_list = [item.strip() for item in raw_skip.split(",") if item.strip()]
