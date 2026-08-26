@@ -45,7 +45,7 @@ def delete_droplet_snapshot(snapshot_id, droplet_id):
     client.snapshots.delete(snapshot_id=snapshot_id)
     while True:
         snapshots = get_droplets_snapshot_list(droplet_id=droplet_id)
-        time.sleep(12)
+        time.sleep(18)
         if snapshots["total"] == 1:
             print("Snapshot deletado com sucesso!")
             print(f"O droplet possui agora {snapshots['total']} snapshots.")
@@ -82,7 +82,7 @@ def power_on_droplet(droplet_id, droplet_ip):
             break
         except Exception as e:
             print("Aguardando o droplet ligar...", e)
-            time.sleep(10)
+            time.sleep(20)
 
 
 def power_off_droplet(droplet_id):
