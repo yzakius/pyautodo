@@ -8,7 +8,7 @@ from azure.core.exceptions import ClientAuthenticationError
 env()
 
 token = os.getenv("DO_TOKEN")
-print("Token carregado:", token[:10] if token else "NÃO ENCONTRADO")
+print("Token carregado" if token else "Token não encontrado")
 
 token = os.getenv("DO_TOKEN")
 raw_skip = os.getenv("SKIP_LIST", "")
@@ -17,6 +17,7 @@ client = Client(token)
 try:
     droplets_info = client.droplets.list()
 except ClientAuthenticationError as e:
+    print("Token inválido ou expirado")
     print(str(e))
     raise SystemExit(1)
 
