@@ -1,9 +1,10 @@
 import os, socket, time
 from datetime import datetime
 
+from azure.core.exceptions import ClientAuthenticationError
 from dotenv import load_dotenv as env
 from pydo import Client
-from azure.core.exceptions import ClientAuthenticationError
+
 
 env()
 
