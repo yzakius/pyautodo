@@ -13,6 +13,7 @@ print("Token carregado" if token else "Token não encontrado")
 
 token = os.getenv("DO_TOKEN")
 raw_skip = os.getenv("SKIP_LIST", "")
+raw_ports = os.getenv("SSH_PORTS", "")
 client = Client(token)
 
 try:
@@ -24,6 +25,10 @@ except ClientAuthenticationError as e:
 
 droplets_list = droplets_info.get("droplets")
 skip_list = [item.strip() for item in raw_skip.split(",") if item.strip()]
+ssh_ports = {
+    name.strip(): int(port)
+    for name, port in (item.split(":") for item in raw_ports.split(",") if item.strip())
+}
 progress_snapshot = 0
 
 def get_droplet_status(droplet_id):
@@ -70,7 +75,7 @@ def create_droplet_snapshot(droplet_id, droplet_name):
             return True
         time.sleep(30)
 
-def power_on_droplet(droplet_id, droplet_ip):
+def power_on_droplet(droplet_id, droplet_ip, port=22):
     print("Religando o Droplet...")
     client.droplet_actions.post(
         droplet_id=droplet_id,
@@ -78,7 +83,7 @@ def power_on_droplet(droplet_id, droplet_ip):
     )
     while True:
         try:
-            s = socket.create_connection((droplet_ip, 22), timeout=5)
+            s = socket.create_connection((droplet_ip, port), timeout=5)
             print("Droplet ligado com sucesso!")
             s.close()
             break
@@ -95,11 +100,11 @@ def power_off_droplet(droplet_id):
     )
     while True:
         droplet_status = get_droplet_status(droplet_id=droplet_id)
-        if droplet_status != "off":
-            print(f"{droplet_status}...")
-            time.sleep(5)
-        print(f"Droplet desligado com sucesso!")
-        return
+        if droplet_status == "off":
+            print(f"Droplet desligado com sucesso!")
+            return
+        print(f"{droplet_status}...")
+        time.sleep(5)
 
 contagem = 0
 for droplet in droplets_list:
@@ -113,21 +118,31 @@ for droplet in droplets_list:
     if droplet_name in skip_list:
         print("Não será feito o snapshot.")
     else:
+        droplet_ip = None
         for network in droplet["networks"]["v4"]:
             if network["type"] == "public":
                 droplet_ip = network["ip_address"]
 
-        snapshots = get_droplets_snapshot_list(droplet_id=droplet_id)
-
-        if snapshots["total"] > 0:
-            print(f"Encontrados {snapshots}")
-            power_off_droplet(droplet_id=droplet_id)
-            created = create_droplet_snapshot(droplet_id=droplet_id, droplet_name=droplet_name)
-            if created:
-                delete_droplet_snapshot(snapshot_id=snapshots["id"], droplet_id=droplet_id)
-                print(droplet_id)
-                print(droplet_ip)
-                power_on_droplet(droplet_id=droplet_id, droplet_ip=droplet_ip)
+        if droplet_ip is None:
+            print(f"O droplet {droplet_name} não possui IPv4 público. Snapshot ignorado.")
         else:
-            print(f"O droplet {droplet_name} não irá fazer snapshot.")
+            snapshots = get_droplets_snapshot_list(droplet_id=droplet_id)
+
+            if snapshots["total"] > 0:
+                print(f"Encontrados {snapshots}")
+                power_off_droplet(droplet_id=droplet_id)
+                try:
+                    created = create_droplet_snapshot(droplet_id=droplet_id, droplet_name=droplet_name)
+                    if created:
+                        delete_droplet_snapshot(snapshot_id=snapshots["id"], droplet_id=droplet_id)
+                finally:
+                    print(droplet_id)
+                    print(droplet_ip)
+                    power_on_droplet(
+                        droplet_id=droplet_id,
+                        droplet_ip=droplet_ip,
+                        port=ssh_ports.get(droplet_name, 22),
+                    )
+            else:
+                print(f"O droplet {droplet_name} não irá fazer snapshot.")
     print("=" * 45)
